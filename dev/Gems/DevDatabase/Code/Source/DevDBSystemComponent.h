@@ -24,7 +24,6 @@ namespace DevDatabase
         : public AZ::Component
         , protected DevDBRequestBus::Handler
 		, protected CloudCanvasCommon::CloudCanvasCommonNotificationsBus::Handler
-		, protected AZ::EntityBus::Handler
 
     {
     public:
@@ -39,9 +38,8 @@ namespace DevDatabase
 
 	private:
 		Aws::DynamoDB::DynamoDBClient* m_pDynamoDBClient = nullptr;
-		//UpdateInventoryRequestBus* m_pUpdateInventory = nullptr;
-		//GetInventoryRequestBus* m_pGetInventory = nullptr;
-		//AddInventoryRequestBus* m_pAddInventory = nullptr;
+
+		void LoadConfigXML(AZStd::string& AWSCredsXML);
 
     protected:
         ////////////////////////////////////////////////////////////////////////
@@ -59,8 +57,8 @@ namespace DevDatabase
 
 		////////////////////////////////////////////////////////////////////////
 		// EntityBus interface implementation
-		void OnEntityActivated(const AZ::EntityId&) override;
-		void OnEntityDeactivated(const AZ::EntityId&) override;
+		//void OnEntityActivated(const AZ::EntityId&) override;
+		//void OnEntityDeactivated(const AZ::EntityId&) override;
 		////////////////////////////////////////////////////////////////////////
 
 		////////////////////////////////////////////////////////////////////////

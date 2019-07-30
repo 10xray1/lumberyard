@@ -18,6 +18,10 @@
 #include <aws/core/utils/logging/DefaultLogSystem.h>
 #include <aws/core/utils/logging/AWSLogging.h>
 
+#include <AzCore/IO/FileIO.h>
+#include <AzCore/XML/rapidxml.h>
+
+
 namespace DevDatabase
 {
     void DevDBSystemComponent::Reflect(AZ::ReflectContext* context)
@@ -55,11 +59,9 @@ namespace DevDatabase
     }
 	void DevDBSystemComponent::Init()
     {
-		AZ_TracePrintf("DevDatabase", "Init DevDatabase.");
     }
     void DevDBSystemComponent::Activate()
     {
-		AZ_TracePrintf("DevDatabase", "Connecting to the CloudCanvas Bus.");
 		CloudCanvasCommon::CloudCanvasCommonNotificationsBus::Handler::BusConnect();
 		DevDBRequestBus::Handler::BusConnect();
 	}
@@ -70,158 +72,254 @@ namespace DevDatabase
         DevDBRequestBus::Handler::BusDisconnect();
 		CloudCanvasCommon::CloudCanvasCommonNotificationsBus::Handler::BusDisconnect();
     }
-	void DevDBSystemComponent::OnEntityActivated(const AZ::EntityId &)
+
+	void DevDBSystemComponent::LoadConfigXML(AZStd::string& AWSCredsXML)
 	{
-		//m_pAddInventory = AddInventoryRequestBus::FindFirstHandler();
-		//m_pGetInventory = GetInventoryRequestBus::FindFirstHandler();
-		//m_pUpdateInventory = UpdateInventoryRequestBus::FindFirstHandler();
-	}
-	void DevDBSystemComponent::OnEntityDeactivated(const AZ::EntityId &)
-	{
-		//m_pAddInventory = nullptr;
-		//m_pGetInventory = nullptr;
-		//m_pUpdateInventory = nullptr;
+		AZ_TracePrintf("DevDatabase - System", "Loading AWS XML");
+
+		AZStd::string fileContents;
+		AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+
+		// Check if file exists
+		if (fileIO && fileIO->Exists(AWSCredsXML.c_str()))
+		{
+			AZ::IO::HandleType AWSFileHandle = AZ::IO::InvalidHandle;
+			AZ::u64 size = 0;
+			AZ::IO::FileIOBase::GetInstance()->Size(AWSCredsXML.c_str(), size);
+
+			if (size)
+			{
+				if (AZ::IO::FileIOBase::GetInstance()->Open(AWSCredsXML.c_str(), AZ::IO::OpenMode::ModeRead, AWSFileHandle))
+				{
+					// Open and read file
+					fileContents.resize_no_construct(size);
+					if (!AZ::IO::FileIOBase::GetInstance()->Read(AWSFileHandle, fileContents.data(), fileContents.size(), true))
+					{
+						AZ_Error("DevDatabase - System", false, "File %s failed read - read was truncated!", AWSFileHandle);
+						fileContents.set_capacity(0);
+					}
+					AZ::IO::FileIOBase::GetInstance()->Close(AWSFileHandle);
+				}
+
+				if (!fileContents.empty())
+				{
+					// Parse XML
+					AZ::rapidxml::xml_document<> configXML;
+					configXML.parse<AZ::rapidxml::parse_full>(fileContents.data());
+
+					if (!configXML.isError())
+					{
+						AZ::rapidxml::xml_node<>* cur_node;
+					
+						cur_node = configXML.first_node("AWSCredentialsConfig");
+						cur_node = cur_node->first_node("AWSAccessKeyId");
+						Aws::String DynamoDB_IDKey = cur_node->first_attribute("id")->value();
+
+						cur_node = configXML.first_node("AWSCredentialsConfig");
+						cur_node = cur_node->first_node("AWSSecretKey");
+						Aws::String DynamoDB_SecretKey = cur_node->first_attribute("key")->value();
+
+						// Create Config
+						Aws::Client::ClientConfiguration clientConfiguration;
+						clientConfiguration.region = "us-west-1";
+						clientConfiguration.endpointOverride = "dynamodb.us-west-1.amazonaws.com";
+						m_pDynamoDBClient = new Aws::DynamoDB::DynamoDBClient(Aws::Auth::AWSCredentials(DynamoDB_IDKey, DynamoDB_SecretKey), clientConfiguration);
+						AZ_TracePrintf("DevDatabase - System", "Client config created");
+					}
+				}
+			}
+		}
 	}
 
 	void DevDBSystemComponent::GetItem(AwsModel::GetItemRequest& request)
 	{
-		const AwsModel::GetItemOutcome& result = m_pDynamoDBClient->GetItem(request);
-		if (!result.IsSuccess()) {
-			AZ_TracePrintf("DevDatabase - System", "Failed to get item: %s", result.GetError().GetMessage());
-			return;
-		}
-		const Aws::Map<Aws::String, AwsModel::AttributeValue>& item = result.GetResult().GetItem();
-
-		if (item.size() > 0)
+		if (m_pDynamoDBClient)
 		{
+			const AwsModel::GetItemOutcome& result = m_pDynamoDBClient->GetItem(request);
+			if (!result.IsSuccess()) {
+				AZ_TracePrintf("DevDatabase - System", "Failed to get item: %s", result.GetError().GetMessage());
+				return;
+			}
+
+			const Aws::Map<Aws::String, AwsModel::AttributeValue>& item = result.GetResult().GetItem();
+			if (item.empty())
+			{
+				AZ_TracePrintf("DevDatabase - System", "No item found with provided key.");
+				return;
+			}
+
 			for (const auto& i : item)
 				AZ_TracePrintf("DevDatabase - System", "AttrName: %s, AttrValue: %s", i.first, i.second.GetS());
 		}
 		else
 		{
-			AZ_TracePrintf("DevDatabase - System", "No item found with provided key.");
+			AZ_Error("DevDatabase - System", false, "Bad AWS Client Config!");
 		}
 	}
 
 	void DevDBSystemComponent::AddItem(AwsModel::PutItemRequest& request)
 	{
-		const AwsModel::PutItemOutcome result = m_pDynamoDBClient->PutItem(request);
-		if (!result.IsSuccess())
+		if (m_pDynamoDBClient)
 		{
-			AZ_TracePrintf("DevDatabase - System", "Error: %s ", result.GetError().GetMessage());
-			return;
+			const AwsModel::PutItemOutcome result = m_pDynamoDBClient->PutItem(request);
+			if (!result.IsSuccess())
+			{
+				AZ_TracePrintf("DevDatabase - System", "Error: %s ", result.GetError().GetMessage());
+				return;
+			}
+			AZ_TracePrintf("DevDatabase - System", "Item added.");
 		}
-		AZ_TracePrintf("DevDatabase - System", "Item added.");
+		else
+		{
+			AZ_Error("DevDatabase - System", false, "Bad AWS Client Config!");
+		}
 	}
 
 	void DevDBSystemComponent::UpdateItem(AwsModel::UpdateItemRequest& request)
 	{
-		const AwsModel::UpdateItemOutcome& result = m_pDynamoDBClient->UpdateItem(request);
-		if (!result.IsSuccess())
+		if (m_pDynamoDBClient)
 		{
-			AZ_TracePrintf("DevDatabase - System", "Error: %s", result.GetError().GetMessage());
-			return;
-		}
-		AZ_TracePrintf("DevDatabase - System", "Item Updated.");
-	}
-
-	void DevDBSystemComponent::CreateTable(AwsModel::CreateTableRequest& request)
-	{
-		const AwsModel::CreateTableOutcome& result = m_pDynamoDBClient->CreateTable(request);
-		if (!result.IsSuccess())
-		{
-			AZ_TracePrintf("DevDatabase - System", "Failed to create table: %s", result.GetError().GetMessage());
-			return;
-		}
-		AZ_TracePrintf("DevDatabase - System", "Table %s created.", result.GetResult().GetTableDescription().GetTableName());
-	}
-
-	void DevDBSystemComponent::ListTables(AwsModel::ListTablesRequest& request)
-	{
-		do
-		{
-			const AwsModel::ListTablesOutcome& result = m_pDynamoDBClient->ListTables(request);
+			const AwsModel::UpdateItemOutcome& result = m_pDynamoDBClient->UpdateItem(request);
 			if (!result.IsSuccess())
 			{
 				AZ_TracePrintf("DevDatabase - System", "Error: %s", result.GetError().GetMessage());
 				return;
 			}
-			for (const auto& s : result.GetResult().GetTableNames())
-				AZ_TracePrintf("DevDatabase - System", "%s", s);
-			request.SetExclusiveStartTableName(result.GetResult().GetLastEvaluatedTableName());
+			AZ_TracePrintf("DevDatabase - System", "Item Updated.");
 		}
-		while (!request.GetExclusiveStartTableName().empty());
+		else
+		{
+			AZ_Error("DevDatabase - System", false, "Bad AWS Client Config!");
+		}
+
+	}
+
+	void DevDBSystemComponent::CreateTable(AwsModel::CreateTableRequest& request)
+	{
+		if (m_pDynamoDBClient)
+		{
+			const AwsModel::CreateTableOutcome& result = m_pDynamoDBClient->CreateTable(request);
+			if (!result.IsSuccess())
+			{
+				AZ_TracePrintf("DevDatabase - System", "Failed to create table: %s", result.GetError().GetMessage());
+				return;
+			}
+			AZ_TracePrintf("DevDatabase - System", "Table %s created.", result.GetResult().GetTableDescription().GetTableName());
+		}
+		else
+		{
+			AZ_Error("DevDatabase - System", false, "Bad AWS Client Config!");
+		}
+	}
+
+	void DevDBSystemComponent::ListTables(AwsModel::ListTablesRequest& request)
+	{
+		if (m_pDynamoDBClient)
+		{
+			do
+			{
+				const AwsModel::ListTablesOutcome& result = m_pDynamoDBClient->ListTables(request);
+				if (!result.IsSuccess())
+				{
+					AZ_TracePrintf("DevDatabase - System", "Error: %s", result.GetError().GetMessage());
+					return;
+				}
+				for (const auto& s : result.GetResult().GetTableNames())
+					AZ_TracePrintf("DevDatabase - System", "%s", s);
+				request.SetExclusiveStartTableName(result.GetResult().GetLastEvaluatedTableName());
+			} while (!request.GetExclusiveStartTableName().empty());
+		}
+		else
+		{
+			AZ_Error("DevDatabase - System", false, "Bad AWS Client Config!");
+		}
+
 	}
 
 	void DevDBSystemComponent::DescribeTable(AwsModel::DescribeTableRequest & request)
 	{
-		const AwsModel::DescribeTableOutcome& result = m_pDynamoDBClient->DescribeTable(request);
-
-		if (result.IsSuccess())
+		if (m_pDynamoDBClient)
 		{
-			const AwsModel::TableDescription& td = result.GetResult().GetTable();
-			AZ_TracePrintf("DevDatabase - System", "Table name  : %s", td.GetTableName());
-			AZ_TracePrintf("DevDatabase - System", "Table ARN   : %s", td.GetTableArn());
-			AZ_TracePrintf("DevDatabase - System", "Status      : %s", AwsModel::TableStatusMapper::GetNameForTableStatus(td.GetTableStatus()));
-			AZ_TracePrintf("DevDatabase - System", "Item count  : %s", td.GetItemCount());
-			AZ_TracePrintf("DevDatabase - System", "Size (bytes): %s", td.GetTableSizeBytes());
+			const AwsModel::DescribeTableOutcome& result = m_pDynamoDBClient->DescribeTable(request);
 
-			const AwsModel::ProvisionedThroughputDescription& ptd = td.GetProvisionedThroughput();
-			AZ_TracePrintf("DevDatabase - System", "Throughput");
-			AZ_TracePrintf("DevDatabase - System", "  Read Capacity : %s", ptd.GetReadCapacityUnits());
-			AZ_TracePrintf("DevDatabase - System", "  Write Capacity: %s", ptd.GetWriteCapacityUnits());
+			if (result.IsSuccess())
+			{
+				const AwsModel::TableDescription& td = result.GetResult().GetTable();
+				AZ_TracePrintf("DevDatabase - System", "Table name  : %s", td.GetTableName());
+				AZ_TracePrintf("DevDatabase - System", "Table ARN   : %s", td.GetTableArn());
+				AZ_TracePrintf("DevDatabase - System", "Status      : %s", AwsModel::TableStatusMapper::GetNameForTableStatus(td.GetTableStatus()));
+				AZ_TracePrintf("DevDatabase - System", "Item count  : %s", td.GetItemCount());
+				AZ_TracePrintf("DevDatabase - System", "Size (bytes): %s", td.GetTableSizeBytes());
 
-			const Aws::Vector<AwsModel::AttributeDefinition>& ad = td.GetAttributeDefinitions();
-			AZ_TracePrintf("DevDatabase - System", "Attributes");
-			for (const auto& a : ad)
-				AZ_TracePrintf("DevDatabase - System", "  %s (%s)", a.GetAttributeName(), AwsModel::ScalarAttributeTypeMapper::GetNameForScalarAttributeType(a.GetAttributeType()));
+				const AwsModel::ProvisionedThroughputDescription& ptd = td.GetProvisionedThroughput();
+				AZ_TracePrintf("DevDatabase - System", "Throughput");
+				AZ_TracePrintf("DevDatabase - System", "  Read Capacity : %s", ptd.GetReadCapacityUnits());
+				AZ_TracePrintf("DevDatabase - System", "  Write Capacity: %s", ptd.GetWriteCapacityUnits());
+
+				const Aws::Vector<AwsModel::AttributeDefinition>& ad = td.GetAttributeDefinitions();
+				AZ_TracePrintf("DevDatabase - System", "Attributes");
+				for (const auto& a : ad)
+					AZ_TracePrintf("DevDatabase - System", "  %s (%s)", a.GetAttributeName(), AwsModel::ScalarAttributeTypeMapper::GetNameForScalarAttributeType(a.GetAttributeType()));
+			}
+			else
+			{
+				AZ_TracePrintf("DevDatabase - System", "Failed to describe table: %s", result.GetError().GetMessage());
+			}
 		}
 		else
 		{
-			AZ_TracePrintf("DevDatabase - System", "Failed to describe table: %s", result.GetError().GetMessage());
+			AZ_Error("DevDatabase - System", false, "Bad AWS Client Config!");
 		}
 	}
 
 	void DevDBSystemComponent::UpdateTable(AwsModel::UpdateTableRequest & request)
 	{
-		const AwsModel::UpdateTableOutcome& result = m_pDynamoDBClient->UpdateTable(request);
-		if (!result.IsSuccess())
+		if (m_pDynamoDBClient)
 		{
-			AZ_TracePrintf("DevDatabase - System", "%s", result.GetError().GetMessage());
-			return;
+			const AwsModel::UpdateTableOutcome& result = m_pDynamoDBClient->UpdateTable(request);
+			if (!result.IsSuccess())
+			{
+				AZ_TracePrintf("DevDatabase - System", "%s", result.GetError().GetMessage());
+				return;
+			}
+			AZ_TracePrintf("DevDatabase - System", "Table Updated");
 		}
-		AZ_TracePrintf("DevDatabase - System", "Table Updated");
+		else
+		{
+			AZ_Error("DevDatabase - System", false, "Bad AWS Client Config!");
+		}
 	}
 
 	void DevDBSystemComponent::DeleteTable(AwsModel::DeleteTableRequest & request)
 	{
-		const AwsModel::DeleteTableOutcome& result = m_pDynamoDBClient->DeleteTable(request);
-		if (result.IsSuccess())
+		if (m_pDynamoDBClient)
 		{
-			AZ_TracePrintf("DevDatabase - System", "Table %s deleted!", result.GetResult().GetTableDescription().GetTableName());
+			const AwsModel::DeleteTableOutcome& result = m_pDynamoDBClient->DeleteTable(request);
+			if (result.IsSuccess())
+			{
+				AZ_TracePrintf("DevDatabase - System", "Table %s deleted", result.GetResult().GetTableDescription().GetTableName());
+			}
+			else
+			{
+				AZ_TracePrintf("DevDatabase - System", "Failed to delete table: ", result.GetError().GetMessage());
+			}
 		}
 		else
 		{
-			AZ_TracePrintf("DevDatabase - System", "Failed to delete table: ", result.GetError().GetMessage());
+			AZ_Error("DevDatabase - System", false, "Bad AWS Client Config!");
 		}
 	}
 
 	void DevDBSystemComponent::OnPostInitialization()
 	{
-		Aws::Utils::Logging::InitializeAWSLogging(
-			Aws::MakeShared<Aws::Utils::Logging::DefaultLogSystem>(
-				"RunUnitTests", Aws::Utils::Logging::LogLevel::Trace, "aws_sdk_"));
-
 		AZ_TracePrintf("DevDatabase - System", "AWS initialization complete");
 
-		// Create DynamoDB client config
-		Aws::String DynamoDB_IDKey = ""; //<< Id key
-		Aws::String DynamoDB_SecretKey = ""; //<< Secret key
-		Aws::Client::ClientConfiguration clientConfiguration;
-		clientConfiguration.region = "us-west-1";
-		clientConfiguration.endpointOverride = "dynamodb.us-west-1.amazonaws.com";
-		m_pDynamoDBClient = new Aws::DynamoDB::DynamoDBClient(Aws::Auth::AWSCredentials(DynamoDB_IDKey, DynamoDB_SecretKey), clientConfiguration);
-		AZ_TracePrintf("DevDatabase - System", "Client config created");
+		//Enable logging
+		Aws::Utils::Logging::InitializeAWSLogging(Aws::MakeShared<Aws::Utils::Logging::DefaultLogSystem>("RunUnitTests", Aws::Utils::Logging::LogLevel::Trace, "aws_sdk_"));
+
+		// Load xml config and set the dbclient
+		AZStd::string AWSCredsXML = "Config/AWSCreds.xml";
+		LoadConfigXML(AWSCredsXML);
 
 		// Add item into inventory console command
 		AzFramework::CommandRegistrationBus::Broadcast(&AzFramework::CommandRegistrationBus::Events::RegisterCommand
