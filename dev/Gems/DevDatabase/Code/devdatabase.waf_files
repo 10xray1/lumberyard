@@ -1,0 +1,21 @@
+{
+    "auto": {
+      "Include": [
+        "Include/DevDatabase/DevDBBus.h",
+        "Include/DevDatabase/UpdateInventoryBus.h",
+        "Include/DevDatabase/GetInventoryBus.h",
+        "Include/DevDatabase/AddInventoryBus.h"
+      ],
+      "Source": [
+        "Source/DevDBModule.cpp",
+        "Source/DevDBSystemComponent.cpp",
+        "Source/DevDBSystemComponent.h",
+        "Source/UpdateInventoryComponent.cpp",
+        "Source/UpdateInventoryComponent.h",
+        "Source/GetInventoryComponent.cpp",
+        "Source/GetInventoryComponent.h",
+        "Source/AddInventoryComponent.cpp",
+        "Source/AddInventoryComponent.h"
+      ]
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "auto": {
+        "Include": [
+            "Include/DevInventory/DevInventoryBus.h"
+        ],
+        "Source": [
+            "Source/DevInventoryModule.cpp",
+            "Source/DevInventorySystemComponent.cpp",
+            "Source/DevInventorySystemComponent.h"
+        ]
+    }
+}

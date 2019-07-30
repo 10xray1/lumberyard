@@ -1,0 +1,21 @@
+{
+  "none": {
+    "Source": [
+      "Source/DevUI_precompiled.cpp",
+      "Source/DevUI_precompiled.h"
+    ]
+  },
+  "auto": {
+    "Include": [
+      "Include/DevUI/DevUIBus.h",
+      "Include/DevUI/AdminUIBus.h"
+    ],
+    "Source": [
+      "Source/DevUIModule.cpp",
+      "Source/DevUISystemComponent.cpp",
+      "Source/DevUISystemComponent.h",
+      "Source/AdminUI.cpp",
+      "Source/AdminUI.h"
+    ]
+  }
+}
