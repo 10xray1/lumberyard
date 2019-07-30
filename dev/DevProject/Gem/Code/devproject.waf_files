@@ -1,0 +1,12 @@
+{
+    "auto": {
+        "Include": [
+            "Include/DevProject/DevProjectBus.h"
+        ],
+        "Source": [
+            "Source/DevProjectModule.cpp",
+            "Source/DevProjectSystemComponent.cpp",
+            "Source/DevProjectSystemComponent.h"
+        ]
+    }
+}

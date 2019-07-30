@@ -1,0 +1,9 @@
+{
+    "description": "Configuration for DevProject",
+    "visual_studio_name": "DevProject",
+    "comment" : "",
+    "game_projects" : "DevProject",
+
+    "modules" : [
+    ]
+}
