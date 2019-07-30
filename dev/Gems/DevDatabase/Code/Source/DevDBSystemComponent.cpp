@@ -215,8 +215,8 @@ namespace DevDatabase
 		AZ_TracePrintf("DevDatabase - System", "AWS initialization complete");
 
 		// Create DynamoDB client config
-		Aws::String DynamoDB_IDKey = "AKIAWACSWDUAOB4KHR37"; //<< Id key
-		Aws::String DynamoDB_SecretKey = "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"; //<< Secret key
+		Aws::String DynamoDB_IDKey = ""; //<< Id key
+		Aws::String DynamoDB_SecretKey = ""; //<< Secret key
 		Aws::Client::ClientConfiguration clientConfiguration;
 		clientConfiguration.region = "us-west-1";
 		clientConfiguration.endpointOverride = "dynamodb.us-west-1.amazonaws.com";
