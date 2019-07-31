@@ -140,6 +140,12 @@
             "_comment": "PhysicsEntities"
         },
         {
+            "Path": "Gems/DevUI",
+            "Uuid": "b2b3e047f55f444b856f20b9ffaae6d7",
+            "Version": "0.1.0",
+            "_comment": "DevUI"
+        },
+        {
             "Path": "Gems/LyShineExamples",
             "Uuid": "c7935ecf5e8047fe8ca947b34b11cadb",
             "Version": "0.1.0",
