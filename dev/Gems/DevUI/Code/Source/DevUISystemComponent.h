@@ -4,6 +4,8 @@
 
 #include <DevUI/DevUIBus.h>
 
+#include <AdminUI.h>
+
 namespace DevUI
 {
     class DevUISystemComponent
@@ -21,9 +23,11 @@ namespace DevUI
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
     protected:
-        ////////////////////////////////////////////////////////////////////////
-        // DevUIRequestBus interface implementation
 
+		AdminUI* m_pAdminUI = nullptr;
+
+		////////////////////////////////////////////////////////////////////////
+        // DevUIRequestBus interface implementation
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////

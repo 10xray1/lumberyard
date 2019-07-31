@@ -21,6 +21,8 @@
 
 #include <DevUI/AdminUIBus.h>
 
+#include <AzFramework/Entity/GameEntityContextBus.h>
+
 namespace DevUI
 {
 	////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -31,6 +33,7 @@ namespace DevUI
 	class AdminUI
 		: protected AdminUIBus::Handler
 		, public UiButtonNotificationBus::MultiHandler
+		, public AzFramework::GameEntityContextEventBus::Handler
 	{
 	public: // member functions
 
@@ -49,6 +52,10 @@ namespace DevUI
 		static void Reflect(AZ::ReflectContext* context);
 
 	private: // member functions
+		
+		// GameEntityContextEventBus
+		void OnGameEntitiesStarted() override;
+		// ~GameEntityContextEventBus
 
 		AZ_DISABLE_COPY_MOVE(AdminUI);
 
