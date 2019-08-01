@@ -31,6 +31,7 @@
 #include <LyShine/UiComponentTypes.h>
 #include <LyShine/Bus/UiAnimationBus.h>
 #include <LyShine/Bus/UiNavigationBus.h>
+#include <LyShine/Bus/UiCursorBus.h>
 
 namespace DevUI
 {
@@ -69,6 +70,14 @@ namespace DevUI
 		CreateText("Title", false, foregroundId, UiTransform2dInterface::Anchors(0.5f, 0.1f, 0.5f, 0.1f), UiTransform2dInterface::Offsets(-200, 50, 200, -50),
 			"Canvas created through C++", AZ::Color(0.f, 0.f, 0.f, 1.f), IDraw2d::HAlign::Center, IDraw2d::VAlign::Center, true);
 
+		// Show mouse
+		bool isMouseShowing;
+		UiCursorBus::BroadcastResult(isMouseShowing, &UiCursorInterface::IsUiCursorVisible);
+		if (!isMouseShowing)
+		{
+			UiCursorBus::Broadcast(&UiCursorInterface::IncrementVisibleCounter);
+		}
+		
 		// Add the elements examples, creating elements from scratch
 		CreateElementsExample(foregroundId);
 
@@ -85,6 +94,16 @@ namespace DevUI
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	void AdminUI::DestroyCanvas()
 	{
+		// Hide mouse
+		bool isMouseShowing;
+		UiCursorBus::BroadcastResult(isMouseShowing, &UiCursorInterface::IsUiCursorVisible);
+		if (isMouseShowing)
+		{
+			UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
+		}
+		
+		
+
 		if (m_canvasId.IsValid())
 		{
 			UiButtonNotificationBus::MultiHandler::BusDisconnect(m_damageButton);
@@ -161,6 +180,8 @@ namespace DevUI
 		CreateComponent(background, LyShine::UiImageComponentUuid);
 		// Add a button component to the background to prevent interactions with interactables on the canvases below this canvas
 		CreateComponent(background, LyShine::UiButtonComponentUuid);
+
+
 
 		// We want the background to stretch to the corners of the canvas
 		// So we set the anchors to go all the way to the right and to the bottom
