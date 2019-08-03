@@ -8,14 +8,17 @@
   "auto": {
     "Include": [
       "Include/DevUI/DevUIBus.h",
-      "Include/DevUI/AdminUIBus.h"
+      "Include/DevUI/AdminUIBus.h",
+      "Include/DevUI/InventoryUIBus.h"
     ],
     "Source": [
       "Source/DevUIModule.cpp",
       "Source/DevUISystemComponent.cpp",
       "Source/DevUISystemComponent.h",
       "Source/AdminUI.cpp",
-      "Source/AdminUI.h"
+      "Source/AdminUI.h",
+      "Source/InventoryUI.cpp",
+      "Source/InventoryUI.h"
     ]
   }
 }

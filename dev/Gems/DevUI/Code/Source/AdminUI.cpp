@@ -41,6 +41,7 @@ namespace DevUI
 	{
 		AdminUIBus::Handler::BusConnect();
 		AzFramework::GameEntityContextEventBus::Handler::BusConnect();
+
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,6 +58,7 @@ namespace DevUI
 		DestroyCanvas();
 
 		AZ::EntityId canvasEntityId = gEnv->pLyShine->CreateCanvas();
+
 		if (!canvasEntityId.IsValid())
 		{
 			return;
@@ -101,8 +103,6 @@ namespace DevUI
 		{
 			UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
 		}
-		
-		
 
 		if (m_canvasId.IsValid())
 		{
@@ -163,7 +163,7 @@ namespace DevUI
 	void AdminUI::OnGameEntitiesStarted()
 	{
 		AZ_TracePrintf("DevUI - AdminUI", "Level loaded, creating canvas");
-		CreateCanvas();
+		//CreateCanvas();
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -181,15 +181,13 @@ namespace DevUI
 		// Add a button component to the background to prevent interactions with interactables on the canvases below this canvas
 		CreateComponent(background, LyShine::UiButtonComponentUuid);
 
-
-
 		// We want the background to stretch to the corners of the canvas
 		// So we set the anchors to go all the way to the right and to the bottom
 		AZ::EntityId backgroundId = background->GetId();
 		EBUS_EVENT_ID(backgroundId, UiTransform2dBus, SetAnchors, UiTransform2dInterface::Anchors(0.0f, 0.0f, 1.0f, 1.0f), false, false);
 
 		// Set the color of the background image to black
-		EBUS_EVENT_ID(backgroundId, UiImageBus, SetColor, AZ::Color(0.f, 0.f, 0.f, 1.f));
+		EBUS_EVENT_ID(backgroundId, UiImageBus, SetColor, AZ::Color(0.f, 0.f, 0.f, 0.35f));
 
 		// Set the background button's navigation to none
 		EBUS_EVENT_ID(backgroundId, UiNavigationBus, SetNavigationMode, UiNavigationInterface::NavigationMode::None);
@@ -236,11 +234,11 @@ namespace DevUI
 			"Behavior example:", AZ::Color(0.f, 0.f, 0.f, 1.f), IDraw2d::HAlign::Left, IDraw2d::VAlign::Center, true);
 
 		// Here we set up a very simple health bar example, all piloted from C++
-
 		// Create the health bar that we will use to display the health
 		// We need a background to show how much of the health has been taken off
 		AZ::EntityId healthBarBgId = CreateImage("HealthBarBackground", false, foregroundId, UiTransform2dInterface::Anchors(0.5f, 0.65f, 0.5f, 0.65f), UiTransform2dInterface::Offsets(-400, -50, 400, 50),
 			"Textures/Basic/Button_Sliced_Normal.sprite", UiImageInterface::ImageType::Sliced, AZ::Color(0.2f, 0.2f, 0.2f, 1.f), true);
+		
 		// And then the currently remaining health bar
 		m_maxHealthBarOffsets = UiTransform2dInterface::Offsets(10, -40, 790, 40);
 		m_healthBar = CreateImage("HealthBar", false, healthBarBgId, UiTransform2dInterface::Anchors(0.0f, 0.5f, 0.0f, 0.5f), m_maxHealthBarOffsets,
@@ -251,6 +249,7 @@ namespace DevUI
 		m_damageButton = CreateButton("DamageButton", false, foregroundId, UiTransform2dInterface::Anchors(0.35f, 0.8f, 0.35f, 0.8f), UiTransform2dInterface::Offsets(-75, -25, 75, 25),
 			"Damage", AZ::Color(0.604f, 0.780f, 0.839f, 1.f), AZ::Color(0.380f, 0.745f, 0.871f, 1.f), AZ::Color(0.055f, 0.675f, 0.886f, 1.f), AZ::Color(0.f, 0.f, 0.f, 1.f), true);
 		UiButtonNotificationBus::MultiHandler::BusConnect(m_damageButton);
+
 		// Create a heal button to increase the health
 		m_healButton = CreateButton("HealButton", false, foregroundId, UiTransform2dInterface::Anchors(0.65f, 0.8f, 0.65f, 0.8f), UiTransform2dInterface::Offsets(-75, -25, 75, 25),
 			"Heal", AZ::Color(0.604f, 0.780f, 0.839f, 1.f), AZ::Color(0.380f, 0.745f, 0.871f, 1.f), AZ::Color(0.055f, 0.675f, 0.886f, 1.f), AZ::Color(0.f, 0.f, 0.f, 1.f), true);

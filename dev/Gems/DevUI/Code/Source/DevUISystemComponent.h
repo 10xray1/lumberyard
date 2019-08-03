@@ -5,6 +5,7 @@
 #include <DevUI/DevUIBus.h>
 
 #include <AdminUI.h>
+#include <InventoryUI.h>
 
 namespace DevUI
 {
@@ -25,6 +26,7 @@ namespace DevUI
     protected:
 
 		AdminUI* m_pAdminUI = nullptr;
+		InventoryUI* m_pInventoryUI = nullptr;
 
 		////////////////////////////////////////////////////////////////////////
         // DevUIRequestBus interface implementation

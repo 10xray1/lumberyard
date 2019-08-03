@@ -5,8 +5,6 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/EditContextConstants.inl>
 
-#include <AdminUI.h>
-
 namespace DevUI
 {
     void DevUISystemComponent::Reflect(AZ::ReflectContext* context)
@@ -55,12 +53,13 @@ namespace DevUI
     {
         DevUIRequestBus::Handler::BusConnect();
 		m_pAdminUI = new AdminUI();
+		m_pInventoryUI = new InventoryUI();
 	}
 
     void DevUISystemComponent::Deactivate()
     {
         DevUIRequestBus::Handler::BusDisconnect();
-		delete m_pAdminUI;
-		m_pAdminUI = nullptr;
+		SAFE_DELETE(m_pAdminUI);
+		SAFE_DELETE(m_pInventoryUI);
     }
 }
